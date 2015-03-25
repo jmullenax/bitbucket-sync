@@ -14,19 +14,16 @@
 
 		public function __construct() {
 
-			//echo 'here!'."\r\n";
-
 			$this->defaultConfig = array(
 					"debug"=>"0",
 					"accountName"=>"youraccount",
 					"pathToPublicKey"=>"~/.ssh/id_rsa.pub",
 					"userPass"=>"username:password",
 					"logFile"=>"command.log",
-					"targetDirectory"=>"/path/to/your/directory"
+					"targetDirectory"=>"/path/to/your/directory/"
 				);
 
 			$this->setConfig();
-
 		}
 
 		public function setConfig() {
@@ -49,7 +46,6 @@
 			}
 
 			return isset($this->config[$key]) ? $this->config[$key] : NULL;
-
 		}
 
 		public function getRepos() {
@@ -83,7 +79,6 @@
 			echo count($this->repos);
 		}
 
-
 		public function pullDown() {
 
 			$targetDir = $this->getConfig('targetDirectory');
@@ -106,8 +101,6 @@
 						echo 'git clone '.$this->gitUrl.$repo['full_name'].' '.$targetDir.$repo['full_name'].' >> '.$log."\r\n";
 						exec('git clone '.$this->gitUrl.$repo['full_name'].' '.$targetDir.$repo['full_name'].' >> '.$log);
 					}
-
-
 				} else {
 					// if the folder exists (and is not a file), then hg pull and update
 					if(file_exists($targetDir.$repo['full_name'])) {
@@ -126,27 +119,13 @@
 			}
 
 			echo "\r\n".'Complete!'."\r\n";
-
-			
-
 		}
-
-
 
 		public function run() {
-			echo 'run!'."\r\n";
-
-
-			//print_r($this->config);
-
+			
 			$this->getRepos();
-
 			$this->pullDown();
-
-
-
 		}
-
 	}
 
 
