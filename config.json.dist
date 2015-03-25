@@ -1,0 +1,8 @@
+{
+	"debug":"0",
+	"accountName":"youraccountname",
+	"pathToPublicKey":"~/.ssh/id_rsa.pub",
+	"userPass":"username:password",
+	"logFile":"command.log",
+	"targetDirectory":"/path/to/your/directory/"
+}
