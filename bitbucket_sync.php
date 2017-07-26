@@ -2,12 +2,12 @@
 
 	class bitbucketSync {
 
-		public $externalOptionsFile = 'config.json';
+		private static $externalOptionsFile = 'config.json';
 		public $config = array();
 
-		public $apiUrl = 'https://bitbucket.org/api/2.0/';
-		public $hgUrl = 'ssh://hg@bitbucket.org/';
-		public $gitUrl = 'git@bitbucket.org:';
+		private static $apiUrl = 'https://bitbucket.org/api/2.0/';
+		private static $hgUrl = 'ssh://hg@bitbucket.org/';
+		private static $gitUrl = 'git@bitbucket.org:';
 
 		public $repos = array();
 
@@ -28,7 +28,7 @@
 
 		public function setConfig() {
 
-			if( ! $userConfig = file_get_contents($this->externalOptionsFile)) {
+			if( ! $userConfig = file_get_contents(self::$externalOptionsFile)) {
 				die('External config file could not be opened. Exiting.....'."\r\n");
 			}
 
@@ -37,6 +37,8 @@
 			}
 
 			$this->config = array_merge($this->defaultConfig, $userConfig);
+
+			//die(var_dump($userConfig));
 		}
 
 		public function getConfig($key = NULL) {
@@ -50,7 +52,7 @@
 
 		public function getRepos() {
 
-			$url = $this->apiUrl.'repositories/'.$this->getConfig('accountName');
+			$url = self::$apiUrl.'repositories/'.$this->getConfig('accountName');
 
 			while($url) {
 				$curl = curl_init($url);
@@ -60,11 +62,18 @@
 				
 				if($this->getConfig('debug')) {
 					// verbose output if we are debugging
-					//curl_setopt($curl, CURLOPT_VERBOSE, TRUE);
+					curl_setopt($curl, CURLOPT_VERBOSE, TRUE);
 				}				
 
 				$response = curl_exec($curl);
+
+				if($e = curl_error($curl)) {
+					die($e);
+				}
+
 				$repos = json_decode($response, TRUE);
+
+				//die(var_dump($url));
 
 				foreach($repos['values'] as $index=>$repo) {
 					$this->repos[] = $repo;			
@@ -76,7 +85,10 @@
 				curl_close($curl);
 			}
 
-			echo count($this->repos);
+			if($this->getConfig('debug')) {
+				echo 'Found '.count($this->repos).' repo(s)...'."\r\n";
+			}
+			
 		}
 
 		public function pullDown() {
@@ -94,12 +106,12 @@
 					if(file_exists($targetDir.$repo['full_name'])) {
 						echo 'chdir('.$targetDir.$repo['full_name'].')';
 						chdir($targetDir.$repo['full_name']);
-						exec('git pull '.$this->gitUrl.$repo['full_name'].' >> '.$log);
+						exec('git pull '.self::$gitUrl.$repo['full_name'].' >> '.$log);
 					} 
 					// if the folder does not exist, then clone
 					else {
-						echo 'git clone '.$this->gitUrl.$repo['full_name'].' '.$targetDir.$repo['full_name'].' >> '.$log."\r\n";
-						exec('git clone '.$this->gitUrl.$repo['full_name'].' '.$targetDir.$repo['full_name'].' >> '.$log);
+						echo 'git clone '.self::$gitUrl.$repo['full_name'].' '.$targetDir.$repo['full_name'].' >> '.$log."\r\n";
+						exec('git clone '.self::$gitUrl.$repo['full_name'].' '.$targetDir.$repo['full_name'].' >> '.$log);
 					}
 				} else {
 					// if the folder exists (and is not a file), then hg pull and update
@@ -107,13 +119,13 @@
 						//echo 'cd '.$targetDir.$repo['full_name'].' && hg pull '.$this->hgUrl.$repo['full_name'].' > '.$log."\r\n";
 						//echo 'chdir('.$targetDir.$repo['full_name'].')';
 						chdir($targetDir.$repo['full_name']);
-						exec('hg pull '.$this->hgUrl.$repo['full_name'].' >> '.$log);
+						exec('hg pull '.self::$hgUrl.$repo['full_name'].' >> '.$log);
 						exec('hg update');
 					} 
 					// if the folder does not exist, then clone
 					else {
-						echo 'hg clone '.$this->hgUrl.$repo['full_name'].' '.$targetDir.$repo['full_name'].' >> '.$log."\r\n";
-						exec('hg clone '.$this->hgUrl.$repo['full_name'].' '.$targetDir.$repo['full_name'].' >> '.$log);
+						echo 'hg clone '.self::$hgUrl.$repo['full_name'].' '.$targetDir.$repo['full_name'].' >> '.$log."\r\n";
+						exec('hg clone '.self::$hgUrl.$repo['full_name'].' '.$targetDir.$repo['full_name'].' >> '.$log);
 					}
 				}
 			}
@@ -128,7 +140,4 @@
 		}
 	}
 
-
-	$sync = new bitbucketSync();
-
-	$sync->run();
+	(new bitbucketSync())->run();
