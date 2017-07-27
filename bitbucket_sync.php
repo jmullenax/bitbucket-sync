@@ -3,18 +3,23 @@
 	class bitbucketSync {
 
 		private static $externalOptionsFile = 'config.json';
-		public $config = array();
-
+		
 		private static $apiUrl = 'https://bitbucket.org/api/2.0/';
 		private static $hgUrl = 'ssh://hg@bitbucket.org/';
 		private static $gitUrl = 'git@bitbucket.org:';
 
 		public $repos = array();
-
+		public $config = array();
 
 		public function __construct() {
 
-			$this->defaultConfig = array(
+			
+
+			$this->setConfig();
+		}
+
+		public function getDefaultConfig() {
+			return $this->defaultConfig = array(
 					"debug"=>"0",
 					"accountName"=>"youraccount",
 					"pathToPublicKey"=>"~/.ssh/id_rsa.pub",
@@ -22,8 +27,42 @@
 					"logFile"=>"command.log",
 					"targetDirectory"=>"/path/to/your/directory/"
 				);
+		}
 
-			$this->setConfig();
+		public function getOptions() {
+			
+			$ret = [];
+
+			$opts = getopt('d::a::u::p::P::l::t::', ['debug::', 'accountName::', 'pathToPublicKey::', 'user::', 'pass::', 'logFile::', 'targetDirectory::']);
+
+			$optMap = [
+				'd' => 'debug',
+				'a' => 'accountName',
+				'u' => 'user',
+				'p' => 'password',
+				'P' => 'pathToPublicKey',
+				'l' => 'logFile',
+				't' => 'targetDirectory'
+			];
+
+			$shortOpts = array_keys($optMap);
+			$longOpts = array_values($optMap);
+
+			foreach ($opts as $key => $opt) {
+				
+				if(in_array($key, $shortOpts, TRUE)) {
+					$ret[$optMap[$key]] = $opt;
+				}
+
+				if(in_array($key, $longOpts, TRUE)) {
+					$ret[$key] = $opt;
+				}
+
+			}
+
+			die(var_dump($ret));
+
+			return $ret;
 		}
 
 		public function setConfig() {
@@ -36,9 +75,7 @@
 				die('Bad syntax in external config file. Exiting.....'."\r\n");
 			}
 
-			$this->config = array_merge($this->defaultConfig, $userConfig);
-
-			//die(var_dump($userConfig));
+			$this->config = array_merge($this->getDefaultConfig(), $userConfig, $this->getOptions());
 		}
 
 		public function getConfig($key = NULL) {
@@ -73,8 +110,6 @@
 
 				$repos = json_decode($response, TRUE);
 
-				//die(var_dump($url));
-
 				foreach($repos['values'] as $index=>$repo) {
 					$this->repos[] = $repo;			
 				}
@@ -99,20 +134,44 @@
 			
 			foreach($this->repos as $index=>$repo) {
 
-				// skip git for the time being
+				if($repo['scm'] == 'git') {
+					$type = 'git';
+					$repoType = self::$gitUrl;
+				} else {
+					$type = 'hg';
+					$repoType = self::$hgUrl;
+				}
+
+
+				// if the folder exists (and is not a file), then pull and update
+				if(file_exists($targetDir.$repo['full_name'])) {
+
+					if($this->getConfig('logFile')) {
+						echo 'chdir('.$targetDir.$repo['full_name'].')';
+					}
+					
+					chdir($targetDir.$repo['full_name']);
+
+					if($this->getConfig('logFile')) {
+						echo $type.' pull '.$repoType.$repo['full_name'].' >> '.$log;
+					}
+
+					exec($type.' pull '.$repoType.$repo['full_name'].' >> '.$log);
+				} 
+				// if the folder does not exist, then clone
+				else {
+
+					if($this->getConfig('logFile')) {
+						echo $type.' clone '.$repoType.$repo['full_name'].' '.$targetDir.$repo['full_name'].' >> '.$log."\r\n";
+					}
+
+					exec($type.' clone '.$repoType.$repo['full_name'].' '.$targetDir.$repo['full_name'].' >> '.$log);
+				}
+
+				/*// skip git for the time being
 				if($repo['scm'] == 'git') {
 					
-					// if the folder exists (and is not a file), then hg pull and update
-					if(file_exists($targetDir.$repo['full_name'])) {
-						echo 'chdir('.$targetDir.$repo['full_name'].')';
-						chdir($targetDir.$repo['full_name']);
-						exec('git pull '.self::$gitUrl.$repo['full_name'].' >> '.$log);
-					} 
-					// if the folder does not exist, then clone
-					else {
-						echo 'git clone '.self::$gitUrl.$repo['full_name'].' '.$targetDir.$repo['full_name'].' >> '.$log."\r\n";
-						exec('git clone '.self::$gitUrl.$repo['full_name'].' '.$targetDir.$repo['full_name'].' >> '.$log);
-					}
+					
 				} else {
 					// if the folder exists (and is not a file), then hg pull and update
 					if(file_exists($targetDir.$repo['full_name'])) {
@@ -127,7 +186,7 @@
 						echo 'hg clone '.self::$hgUrl.$repo['full_name'].' '.$targetDir.$repo['full_name'].' >> '.$log."\r\n";
 						exec('hg clone '.self::$hgUrl.$repo['full_name'].' '.$targetDir.$repo['full_name'].' >> '.$log);
 					}
-				}
+				}*/
 			}
 
 			echo "\r\n".'Complete!'."\r\n";
